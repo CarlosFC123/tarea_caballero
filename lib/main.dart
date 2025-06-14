@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+import 'package:intl/intl.dart'; // Para DateFormat
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -336,13 +339,18 @@ class _ClientsListState extends State<ClientsList> {
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton(
+floatingActionButton: FloatingActionButton(
   onPressed: () {
     showDialog(
       context: context,
       builder: (context) {
         final phoneController = TextEditingController();
         final nameController = TextEditingController();
+        final apellidosController = TextEditingController();
+        final direccionController = TextEditingController();
+        final emailController = TextEditingController();
+        final estadoController = TextEditingController();
+        final ciudadController = TextEditingController();
         final passwordController = TextEditingController();
         
         return StatefulBuilder(
@@ -355,28 +363,95 @@ class _ClientsListState extends State<ClientsList> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Teléfono (requerido)
                     TextField(
                       controller: phoneController,
                       decoration: const InputDecoration(
-                        labelText: 'Teléfono',
+                        labelText: 'Teléfono*',
                         hintText: 'Ej: +51987654321'
                       ),
                       keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    
+                    // Nombre (requerido)
                     TextField(
                       controller: nameController,
                       decoration: const InputDecoration(
-                        labelText: 'Nombre completo'
+                        labelText: 'Nombre(s)*'
                       ),
+                      textCapitalization: TextCapitalization.words,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    
+                    // Apellidos (requerido)
+                    TextField(
+                      controller: apellidosController,
+                      decoration: const InputDecoration(
+                        labelText: 'Apellidos*'
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Contraseña (requerido)
                     TextField(
                       controller: passwordController,
                       decoration: const InputDecoration(
-                        labelText: 'Contraseña'
+                        labelText: 'Contraseña*'
                       ),
                       obscureText: true,
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Email (opcional)
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Correo Electrónico',
+                        hintText: 'opcional'
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Dirección (opcional)
+                    TextField(
+                      controller: direccionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Dirección',
+                        hintText: 'opcional'
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Estado y Ciudad (opcional)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: estadoController,
+                            decoration: const InputDecoration(
+                              labelText: 'Estado',
+                              hintText: 'opcional'
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: ciudadController,
+                            decoration: const InputDecoration(
+                              labelText: 'Ciudad',
+                              hintText: 'opcional'
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -388,11 +463,16 @@ class _ClientsListState extends State<ClientsList> {
                 ),
                 ElevatedButton(
                   onPressed: isLoading ? null : () async {
+                    // Validar campos obligatorios
                     if (phoneController.text.isEmpty || 
                         nameController.text.isEmpty || 
+                        apellidosController.text.isEmpty ||
                         passwordController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Complete todos los campos')),
+                        const SnackBar(
+                          content: Text('Complete los campos obligatorios (*)'),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                       return;
                     }
@@ -402,6 +482,19 @@ class _ClientsListState extends State<ClientsList> {
                       await Supabase.instance.client.from('users').insert({
                         'telefono': phoneController.text.trim(),
                         'nombre': nameController.text.trim(),
+                        'apellidos': apellidosController.text.trim(),
+                        'direccion': direccionController.text.isNotEmpty 
+                            ? direccionController.text.trim() 
+                            : null,
+                        'correo_electronico': emailController.text.isNotEmpty
+                            ? emailController.text.trim()
+                            : null,
+                        'estado': estadoController.text.isNotEmpty
+                            ? estadoController.text.trim()
+                            : null,
+                        'ciudad': ciudadController.text.isNotEmpty
+                            ? ciudadController.text.trim()
+                            : null,
                         'password': passwordController.text.trim(),
                         'puntos': 0,
                         'created_at': DateTime.now().toIso8601String(),
@@ -411,22 +504,36 @@ class _ClientsListState extends State<ClientsList> {
                         _loadClients();
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Cliente creado exitosamente')),
+                          const SnackBar(
+                            content: Text('✅ Cliente registrado exitosamente'),
+                            backgroundColor: Colors.green,
+                          ),
                         );
                       }
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: ${e.toString()}')),
+                          SnackBar(
+                            content: Text('❌ Error: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                          ),
                         );
+                        debugPrint('Error al crear usuario: $e');
                       }
                     } finally {
                       if (mounted) setState(() => isLoading = false);
                     }
                   },
                   child: isLoading 
-                      ? const CircularProgressIndicator()
-                      : const Text('Guardar'),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Registrar Cliente'),
                 ),
               ],
             );
@@ -928,228 +1035,689 @@ class _UserHomeState extends State<UserHome> {
     super.initState();
     _userData = widget.userData;
   }
+Future<void> _refreshUserData() async {
+    if (!mounted) return;
+    
+    try {
+      final userData = await Supabase.instance.client
+          .from('users')
+          .select()
+          .eq('id', _userData['id'])
+          .single();
 
-  Future<void> _refreshUserData() async {
-  if (!mounted) return;
-  
-  try {
-    final userData = await Supabase.instance.client
-        .from('users')
-        .select()
-        .eq('id', _userData['id'])
-        .single();
-
-    if (mounted && userData != null) {
-      setState(() => _userData = userData);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Datos actualizados correctamente'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      debugPrint('Error refreshing user data: $e');
+      if (mounted && userData != null) {
+        setState(() => _userData = userData);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Datos actualizados correctamente'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        debugPrint('Error refreshing user data: $e');
+      }
     }
   }
-}
 
   Future<void> _redeemReward(String rewardId, int pointsNeeded) async {
-  if (!mounted) return;
-  
-  // Validación de puntos
-  if (_userData['puntos'] < pointsNeeded) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No tienes suficientes puntos'),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    return;
-  }
-
-  try {
-    final newPoints = _userData['puntos'] - pointsNeeded;
+    if (!mounted) return;
     
-    // Usar transacción para asegurar consistencia
-    await Supabase.instance.client.rpc('redeem_reward', params: {
-      'user_id': _userData['id'],
-      'reward_id': rewardId,
-      'points_needed': pointsNeeded,
-      'new_points': newPoints,
-    });
-
-    if (mounted) {
+    if (_userData['puntos'] < pointsNeeded) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Premio canjeado con éxito'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          content: Text('No tienes suficientes puntos'),
+          backgroundColor: Colors.orange,
         ),
       );
-      _refreshUserData();
+      return;
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      debugPrint('Error redeeming reward: $e');
+
+    try {
+      final newPoints = _userData['puntos'] - pointsNeeded;
+      
+      await Supabase.instance.client.from('user_rewards').insert({
+      'user_id': _userData['id'],
+      'reward_id': rewardId,
+    });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Premio canjeado con éxito'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        _refreshUserData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        debugPrint('Error redeeming reward: $e');
+      }
     }
   }
-}
 
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Mi Fidelización'),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.exit_to_app),
-          onPressed: () => Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          ),
-        ),
-      ],
-    ),
-    body: _currentIndex == 0
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Hola, ${_userData['nombre']}',
-                  style: const TextStyle(fontSize: 24),
-                ),
-                const SizedBox(height: 20),
-                const Text('Tus puntos acumulados:'),
-                Text(
-                  '${_userData['puntos']}',
-                  style: const TextStyle(fontSize: 36, color: Colors.blue),
-                ),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Tarjeta Digital'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.credit_card, size: 100, color: Colors.blue),
-                            Text(
-                              _userData['telefono'],
-                              style: const TextStyle(fontSize: 24),
-                            ),
-                            Text('${_userData['puntos']} puntos'),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cerrar'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: const Text('Ver mi tarjeta digital'),
+  Widget _buildHomeTab() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Tarjeta de fidelización
+          Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2A5C8F), Color(0xFF1E3A5F)],
+              ),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
-          )
-        : _currentIndex == 1
-            ? FutureBuilder(
-                future: Supabase.instance.client
-                    .from('rewards')
-                    .select()
-                    .eq('activo', true),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
-                  if (snapshot.hasError || !snapshot.hasData || (snapshot.data as List).isEmpty) {
-                    return const Center(child: Text('No hay premios disponibles'));
-                  }
-                  
-                  final rewards = snapshot.data as List<dynamic>;
-                  
-                  return ListView.builder(
-                    itemCount: rewards.length,
-                    itemBuilder: (context, index) {
-                      final reward = rewards[index] as Map<String, dynamic>;
-                      return Card(
-                        margin: const EdgeInsets.all(8.0),
-                        child: ListTile(
-                          title: Text(reward['nombre']),
-                          subtitle: Text('${reward['puntos_necesarios']} puntos'),
-                          trailing: ElevatedButton(
-                            onPressed: () => _redeemReward(
-                              reward['id'],
-                              reward['puntos_necesarios'],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Mi cuenta',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      _userData['telefono'] ?? '',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Center(
+                  child: Text(
+                    'MEGACARD CLUB',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Tarjeta Digital'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.credit_card, size: 100, color: Colors.blue),
+                              Text(
+                                _userData['telefono'],
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                              Text('${_userData['puntos']} puntos'),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cerrar'),
                             ),
-                            child: const Text('Canjear'),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Detalle de tarjeta →',
+                      style: TextStyle(
+                        color: Colors.white,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Sección de puntos acumulados
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Puntos acumulados',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bonificados',
+                          style: TextStyle(
+                            color: Colors.grey,
                           ),
                         ),
-                      );
-                    },
-                  );
-                },
-              )
-            : FutureBuilder(
-                future: Supabase.instance.client
-                    .from('partners')
-                    .select()
-                    .eq('activo', true),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
-                  if (snapshot.hasError || !snapshot.hasData || (snapshot.data as List).isEmpty) {
-                    return const Center(child: Text('No hay beneficios disponibles'));
-                  }
-                  
-                  final partners = snapshot.data as List<dynamic>;
-                  
-                  return ListView.builder(
-                    itemCount: partners.length,
-                    itemBuilder: (context, index) {
-                      final partner = partners[index] as Map<String, dynamic>;
-                      return Card(
-                        margin: const EdgeInsets.all(8.0),
-                        child: ListTile(
-                          title: Text(partner['empresa']),
-                          subtitle: Text(partner['descuento'] ?? ''),
+                        SizedBox(height: 5),
+                        Text(
+                          'Encuesta',
+                          style: TextStyle(
+                            color: Colors.grey,
+                          ),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${_userData['puntos']?.toStringAsFixed(1) ?? '0.0'}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          '0.0',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          // Botón de canjear puntos
+          Container(
+            margin: const EdgeInsets.all(20),
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2A5C8F),
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-    bottomNavigationBar: BottomNavigationBar(
-      currentIndex: _currentIndex,
-      onTap: (index) => setState(() => _currentIndex = index),
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-        BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Premios'),
-        BottomNavigationBarItem(icon: Icon(Icons.discount), label: 'Beneficios'),
-      ],
+              onPressed: () {
+                setState(() => _currentIndex = 1); // Navegar a premios
+              },
+              child: const Text(
+                'CANJEAR PUNTOS',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRewardsTab() {
+    return FutureBuilder(
+      future: Supabase.instance.client
+          .from('rewards')
+          .select()
+          .eq('activo', true),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError || !snapshot.hasData || (snapshot.data as List).isEmpty) {
+          return const Center(child: Text('No hay premios disponibles'));
+        }
+        
+        final rewards = snapshot.data as List<dynamic>;
+        
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: rewards.length,
+          itemBuilder: (context, index) {
+            final reward = rewards[index] as Map<String, dynamic>;
+            return Card(
+              elevation: 2,
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            reward['nombre'],
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '${reward['puntos_necesarios']} puntos',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2A5C8F),
+                      ),
+                      onPressed: () => _redeemReward(
+                        reward['id'],
+                        reward['puntos_necesarios'],
+                      ),
+                      child: const Text('Canjear'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+Widget _buildBenefitsTab() {
+  return FutureBuilder(
+    future: Future.wait([
+      // Obtener beneficios activos (partners)
+      Supabase.instance.client
+          .from('partners')
+          .select()
+          .eq('activo', true),
+          
+      // Obtener premios canjeados por el usuario con detalles completos
+      Supabase.instance.client
+          .from('user_rewards')
+          .select('''
+            id, 
+            redemption_date, 
+            used,
+            reward:rewards(id, nombre, descripcion, puntos_necesarios)
+          ''')
+          .eq('user_id', _userData['id'])
+          .order('redemption_date', ascending: false)
+    ]),
+    builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      
+      if (snapshot.hasError) {
+        return const Center(child: Text('Error al cargar datos'));
+      }
+      
+      final benefits = snapshot.data?[0] as List<dynamic>? ?? [];
+      final userRewards = snapshot.data?[1] as List<dynamic>? ?? [];
+      
+      return Column(
+        children: [
+          // Tarjeta de identificación (igual que antes)
+          Container(
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2A5C8F), Color(0xFF1E3A5F)],
+              ),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Beneficios',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tarjeta',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      _userData['telefono'] ?? '',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Tabs de navegación
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {},
+                    style: TextButton.styleFrom(
+                      foregroundColor: _currentIndex == 2 ? const Color(0xFF2A5C8F) : Colors.grey,
+                    ),
+                    child: const Text('Beneficios'),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => setState(() => _currentIndex = 1),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _currentIndex == 1 ? const Color(0xFF2A5C8F) : Colors.grey,
+                    ),
+                    child: const Text('Premios'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Listado de beneficios
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: benefits.length,
+              itemBuilder: (context, index) {
+                final benefit = benefits[index] as Map<String, dynamic>;
+                return _buildBenefitCard(benefit);
+              },
+            ),
+          ),
+
+          // Sección "Mis premios obtenidos"
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Mis premios obtenidos',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                if (userRewards.isEmpty)
+                  const Text(
+                    'No has canjeado ningún premio aún',
+                    style: TextStyle(color: Colors.grey),
+                  )
+                else
+                  ...userRewards.map((reward) => _buildUserRewardCard(reward)).toList(),
+              ],
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+Widget _buildBenefitCard(Map<String, dynamic> benefit) {
+  return Card(
+    elevation: 2,
+    margin: const EdgeInsets.only(bottom: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.blue[100],
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: const Icon(Icons.discount, color: Colors.blue),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  benefit['empresa'],
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  benefit['descuento'] ?? 'Beneficio especial',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
+
+Widget _buildUserRewardCard(Map<String, dynamic> reward) {
+  final rewardData = reward['reward'] as Map<String, dynamic>;
+  final redemptionDate = DateTime.parse(reward['redemption_date']);
+  final formattedDate = DateFormat('dd/MM/yyyy').format(redemptionDate);
+  final isUsed = reward['used'] as bool;
+
+  return Card(
+    elevation: 2,
+    margin: const EdgeInsets.only(bottom: 8),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: ListTile(
+      leading: Icon(
+        isUsed ? Icons.check_circle : Icons.card_giftcard,
+        color: isUsed ? Colors.green : Colors.amber,
+      ),
+      title: Text(rewardData['nombre'] ?? 'Premio'),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Canjeado el $formattedDate'),
+          if (isUsed) 
+            const Text(
+              'Ya utilizado',
+              style: TextStyle(color: Colors.green),
+            ),
+        ],
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.info_outline),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(rewardData['nombre'] ?? 'Detalles del premio'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Canjeado el $formattedDate'),
+                  const SizedBox(height: 10),
+                  Text('Puntos utilizados: ${rewardData['puntos_necesarios']}'),
+                  const SizedBox(height: 10),
+                  Text(rewardData['descripcion'] ?? 'Descripción no disponible'),
+                ],
+              ),
+              actions: [
+                if (!isUsed) TextButton(
+                  onPressed: () => _markRewardAsUsed(reward['id']),
+                  child: const Text('Marcar como usado'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+  );
+}
+Future<void> _markRewardAsUsed(String rewardId) async {
+  try {
+    await Supabase.instance.client
+        .from('user_rewards')
+        .update({'used': true})
+        .eq('id', rewardId);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Premio marcado como usado'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {}); // Refrescar la UI
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mi Fidelización'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.exit_to_app),
+            onPressed: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            ),
+          ),
+        ],
+      ),
+      body: _currentIndex == 0
+          ? _buildHomeTab()
+          : _currentIndex == 1
+              ? _buildRewardsTab()
+              : _buildBenefitsTab(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+          BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Premios'),
+          BottomNavigationBarItem(icon: Icon(Icons.discount), label: 'Beneficios'),
+        ],
+      ),
+    );
+  }
 }
