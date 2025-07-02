@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
-import 'package:intl/intl.dart'; // Para DateFormat
+import 'usuarios.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await Supabase.initialize(
-    url: 'https://kngtqjpdmzbvwuevxarx.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuZ3RxanBkbXpidnd1ZXZ4YXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3NzEwNjgsImV4cCI6MjA2NTM0NzA2OH0.PgP2uS6kOs4Zlk-e3Q80TsDEQRhP6WCUaXRQv6k9wWk',
-  );
+      url: 'https://kngtqjpdmzbvwuevxarx.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuZ3RxanBkbXpidnd1ZXZ4YXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3NzEwNjgsImV4cCI6MjA2NTM0NzA2OH0.PgP2uS6kOs4Zlk-e3Q80TsDEQRhP6WCUaXRQv6k9wWk',
+    );
   
   runApp(const FidelizacionApp());
 }
@@ -53,56 +52,56 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-  setState(() => _isLoading = true);
-  
-  try {
-    if (_isAdmin) {
-      // Login admin
-      final adminData = await Supabase.instance.client
-          .from('admin')
-          .select()
-          .eq('email', _phoneController.text.trim())
-          .eq('password', _passwordController.text.trim())
-          .single();
-      
-      if (adminData != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => AdminHome(adminData: adminData)),
-        );
+    setState(() => _isLoading = true);
+    
+    try {
+      if (_isAdmin) {
+        // Login admin
+        final adminData = await Supabase.instance.client
+            .from('admin')
+            .select()
+            .eq('email', _phoneController.text.trim())
+            .eq('password', _passwordController.text.trim())
+            .single();
+        
+        if (adminData != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => AdminHome(adminData: adminData)),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Credenciales incorrectas')),
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Credenciales incorrectas')),
-        );
+        // Login usuario
+        final userData = await Supabase.instance.client
+            .from('users')
+            .select()
+            .eq('telefono', _phoneController.text.trim())
+            .eq('password', _passwordController.text.trim())
+            .single();
+        
+        if (userData != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => UserHome(userData: userData)),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Teléfono o contraseña incorrectos')),
+          );
+        }
       }
-    } else {
-      // Login usuario
-      final userData = await Supabase.instance.client
-          .from('users')
-          .select()
-          .eq('telefono', _phoneController.text.trim())
-          .eq('password', _passwordController.text.trim())
-          .single();
-      
-      if (userData != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => UserHome(userData: userData)),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Teléfono o contraseña incorrectos')),
-        );
-      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al iniciar sesión: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error al iniciar sesión: ${e.toString()}')),
-    );
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -224,61 +223,59 @@ class _ClientsListState extends State<ClientsList> {
   }
 
   Future<void> _loadClients() async {
-  setState(() => _isLoading = true);
-  try {
-    final List<dynamic> data = await Supabase.instance.client
-        .from('users')
-        .select()
-        .order('created_at', ascending: false);
-    
-    setState(() => _clients = List<Map<String, dynamic>>.from(data));
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error al cargar clientes: ${e.toString()}')),
-    );
-  } finally {
-    if (mounted) {
-      setState(() => _isLoading = false);
+    setState(() => _isLoading = true);
+    try {
+      final List<dynamic> data = await Supabase.instance.client
+          .from('users')
+          .select()
+          .order('created_at', ascending: false);
+      
+      setState(() => _clients = List<Map<String, dynamic>>.from(data));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar clientes: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
-}
+
   Future<void> _addPoints(String userId, int currentPoints, double amount) async {
-  final pointsToAdd = (amount ~/ 100) * 5;
-  final newPoints = currentPoints + pointsToAdd;
-  
-  try {
-    // Update user points
-    await Supabase.instance.client
-        .from('users')
-        .update({'puntos': newPoints})
-        .eq('id', userId);
-
-    // Record transaction
-    await Supabase.instance.client
-        .from('transactions')
-        .insert({
-          'user_id': userId,
-          'monto_compra': amount,
-          'puntos_otorgados': pointsToAdd,
-          'created_at': DateTime.now().toIso8601String(),
-        });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ $pointsToAdd puntos agregados')),
-    );
+    final pointsToAdd = (amount ~/ 100) * 5;
+    final newPoints = currentPoints + pointsToAdd;
     
-    // Refresh client list
-    _loadClients();
-  } catch (e) {
-    debugPrint('Error adding points: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('❌ Error al agregar puntos: ${e.toString()}'),
-        backgroundColor: Colors.red,
-      ),
-    );
+    try {
+      await Supabase.instance.client
+          .from('users')
+          .update({'puntos': newPoints})
+          .eq('id', userId);
+
+      await Supabase.instance.client
+          .from('transactions')
+          .insert({
+            'user_id': userId,
+            'monto_compra': amount,
+            'puntos_otorgados': pointsToAdd,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ $pointsToAdd puntos agregados')),
+      );
+      
+      _loadClients();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al agregar puntos: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -339,211 +336,107 @@ class _ClientsListState extends State<ClientsList> {
                 );
               },
             ),
-floatingActionButton: FloatingActionButton(
-  onPressed: () {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final phoneController = TextEditingController();
-        final nameController = TextEditingController();
-        final apellidosController = TextEditingController();
-        final direccionController = TextEditingController();
-        final emailController = TextEditingController();
-        final estadoController = TextEditingController();
-        final ciudadController = TextEditingController();
-        final passwordController = TextEditingController();
-        
-        return StatefulBuilder(
-          builder: (context, setState) {
-            bool isLoading = false;
-            
-            return AlertDialog(
-              title: const Text('Nuevo Cliente'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Teléfono (requerido)
-                    TextField(
-                      controller: phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Teléfono*',
-                        hintText: 'Ej: +51987654321'
-                      ),
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Nombre (requerido)
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre(s)*'
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Apellidos (requerido)
-                    TextField(
-                      controller: apellidosController,
-                      decoration: const InputDecoration(
-                        labelText: 'Apellidos*'
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Contraseña (requerido)
-                    TextField(
-                      controller: passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Contraseña*'
-                      ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Email (opcional)
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo Electrónico',
-                        hintText: 'opcional'
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Dirección (opcional)
-                    TextField(
-                      controller: direccionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Dirección',
-                        hintText: 'opcional'
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Estado y Ciudad (opcional)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: estadoController,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              final phoneController = TextEditingController();
+              final nameController = TextEditingController();
+              final passwordController = TextEditingController();
+              
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  bool isLoading = false;
+                  
+                  return AlertDialog(
+                    title: const Text('Nuevo Cliente'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: phoneController,
                             decoration: const InputDecoration(
-                              labelText: 'Estado',
-                              hintText: 'opcional'
+                              labelText: 'Teléfono',
+                              hintText: 'Ej: +51987654321'
+                            ),
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Nombre completo'
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: ciudadController,
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: passwordController,
                             decoration: const InputDecoration(
-                              labelText: 'Ciudad',
-                              hintText: 'opcional'
+                              labelText: 'Contraseña'
                             ),
+                            obscureText: true,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading ? null : () async {
-                    // Validar campos obligatorios
-                    if (phoneController.text.isEmpty || 
-                        nameController.text.isEmpty || 
-                        apellidosController.text.isEmpty ||
-                        passwordController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Complete los campos obligatorios (*)'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
+                    actions: [
+                      TextButton(
+                        onPressed: isLoading ? null : () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : () async {
+                          if (phoneController.text.isEmpty || 
+                              nameController.text.isEmpty || 
+                              passwordController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Complete todos los campos')),
+                            );
+                            return;
+                          }
 
-                    setState(() => isLoading = true);
-                    try {
-                      await Supabase.instance.client.from('users').insert({
-                        'telefono': phoneController.text.trim(),
-                        'nombre': nameController.text.trim(),
-                        'apellidos': apellidosController.text.trim(),
-                        'direccion': direccionController.text.isNotEmpty 
-                            ? direccionController.text.trim() 
-                            : null,
-                        'correo_electronico': emailController.text.isNotEmpty
-                            ? emailController.text.trim()
-                            : null,
-                        'estado': estadoController.text.isNotEmpty
-                            ? estadoController.text.trim()
-                            : null,
-                        'ciudad': ciudadController.text.isNotEmpty
-                            ? ciudadController.text.trim()
-                            : null,
-                        'password': passwordController.text.trim(),
-                        'puntos': 0,
-                        'created_at': DateTime.now().toIso8601String(),
-                      });
+                          setState(() => isLoading = true);
+                          try {
+                            await Supabase.instance.client.from('users').insert({
+                              'telefono': phoneController.text.trim(),
+                              'nombre': nameController.text.trim(),
+                              'password': passwordController.text.trim(),
+                              'puntos': 0,
+                              'created_at': DateTime.now().toIso8601String(),
+                            });
 
-                      if (mounted) {
-                        _loadClients();
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Cliente registrado exitosamente'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('❌ Error: ${e.toString()}'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        debugPrint('Error al crear usuario: $e');
-                      }
-                    } finally {
-                      if (mounted) setState(() => isLoading = false);
-                    }
-                  },
-                  child: isLoading 
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Registrar Cliente'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  },
-  child: const Icon(Icons.add),
-),
+                            if (mounted) {
+                              _loadClients();
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Cliente creado exitosamente')),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: ${e.toString()}')),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => isLoading = false);
+                          }
+                        },
+                        child: isLoading 
+                            ? const CircularProgressIndicator()
+                            : const Text('Guardar'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }
@@ -565,212 +458,210 @@ class _RewardsListState extends State<RewardsList> {
   }
 
   Future<void> _loadRewards() async {
-  if (!mounted) return;
-  setState(() => _isLoading = true);
-  
-  try {
-    final List<dynamic> rewards = await Supabase.instance.client
-        .from('rewards')
-        .select()
-        .order('created_at', ascending: false);
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    
+    try {
+      final List<dynamic> rewards = await Supabase.instance.client
+          .from('rewards')
+          .select()
+          .order('created_at', ascending: false);
 
-    if (mounted) {
-      setState(() {
-        _rewards = List<Map<String, dynamic>>.from(rewards);
-      });
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar premios: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      debugPrint('Error loading rewards: $e');
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _rewards = List<Map<String, dynamic>>.from(rewards);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar premios: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
-return Scaffold(
-  appBar: AppBar(
-    title: const Text('Gestión de Premios'),
-    centerTitle: true,
-  ),
-  body: _isLoading
-      ? const Center(child: CircularProgressIndicator())
-      : RefreshIndicator(
-          onRefresh: _loadRewards,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(8),
-            itemCount: _rewards.length,
-            itemBuilder: (context, index) {
-              final reward = _rewards[index];
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  title: Text(
-                    reward['nombre'],
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  subtitle: Text(
-                    '${reward['puntos_necesarios']} puntos',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  trailing: Switch.adaptive(
-                    value: reward['activo'],
-                    onChanged: (value) async {
-                      try {
-                        await Supabase.instance.client
-                            .from('rewards')
-                            .update({'activo': value})
-                            .eq('id', reward['id']);
-                        
-                        if (mounted) {
-                          _loadRewards();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                value ? 'Premio activado' : 'Premio desactivado',
-                              ),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error: ${e.toString()}'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-  floatingActionButton: FloatingActionButton(
-    backgroundColor: Theme.of(context).primaryColor,
-    onPressed: () {
-      showDialog(
-        context: context,
-        builder: (context) {
-          final nameController = TextEditingController();
-          final pointsController = TextEditingController();
-          bool isLoading = false;
-          
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: const Text('Nuevo Premio'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Nombre',
-                          border: OutlineInputBorder(),
-                        ),
-                        textCapitalization: TextCapitalization.words,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Gestión de Premios'),
+        centerTitle: true,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadRewards,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: _rewards.length,
+                itemBuilder: (context, index) {
+                  final reward = _rewards[index];
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      title: Text(
+                        reward['nombre'],
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: pointsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Puntos necesarios',
-                          border: OutlineInputBorder(),
+                      subtitle: Text(
+                        '${reward['puntos_necesarios']} puntos',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      trailing: Switch.adaptive(
+                        value: reward['activo'],
+                        onChanged: (value) async {
+                          try {
+                            await Supabase.instance.client
+                                .from('rewards')
+                                .update({'activo': value})
+                                .eq('id', reward['id']);
+                            
+                            if (mounted) {
+                              _loadRewards();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    value ? 'Premio activado' : 'Premio desactivado'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Theme.of(context).primaryColor,
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              final nameController = TextEditingController();
+              final pointsController = TextEditingController();
+              bool isLoading = false;
+              
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  return AlertDialog(
+                    title: const Text('Nuevo Premio'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Nombre',
+                              border: OutlineInputBorder(),
+                            ),
+                            textCapitalization: TextCapitalization.words,
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: pointsController,
+                            decoration: const InputDecoration(
+                              labelText: 'Puntos necesarios',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: isLoading ? null : () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
                         ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        onPressed: isLoading ? null : () async {
+                          if (nameController.text.isEmpty || pointsController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Complete todos los campos')),
+                            );
+                            return;
+                          }
+
+                          setState(() => isLoading = true);
+                          try {
+                            await Supabase.instance.client.from('rewards').insert({
+                              'nombre': nameController.text.trim(),
+                              'puntos_necesarios': int.parse(pointsController.text),
+                              'activo': true,
+                              'created_at': DateTime.now().toIso8601String(),
+                            });
+
+                            if (mounted) {
+                              _loadRewards();
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Premio creado exitosamente'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => isLoading = false);
+                          }
+                        },
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Guardar'),
                       ),
                     ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: isLoading ? null : () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                    ),
-                    onPressed: isLoading ? null : () async {
-                      if (nameController.text.isEmpty || pointsController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Complete todos los campos')),
-                        );
-                        return;
-                      }
-
-                      setState(() => isLoading = true);
-                      try {
-                        await Supabase.instance.client.from('rewards').insert({
-                          'nombre': nameController.text.trim(),
-                          'puntos_necesarios': int.parse(pointsController.text),
-                          'activo': true,
-                          'created_at': DateTime.now().toIso8601String(),
-                        });
-
-                        if (mounted) {
-                          _loadRewards();
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Premio creado exitosamente'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error: ${e.toString()}'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      } finally {
-                        if (mounted) setState(() => isLoading = false);
-                      }
-                    },
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Guardar'),
-                  ),
-                ],
+                  );
+                },
               );
             },
           );
         },
-      );
-    },
-    child: const Icon(Icons.add, color: Colors.white),
-  ),
-);
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
   }
 }
 
@@ -790,7 +681,7 @@ class _PartnersListState extends State<PartnersList> {
     _loadPartners();
   }
 
-    Future<void> _loadPartners() async {
+  Future<void> _loadPartners() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     
@@ -813,7 +704,6 @@ class _PartnersListState extends State<PartnersList> {
             backgroundColor: Colors.red,
           ),
         );
-        debugPrint('Error loading partners: $e');
       }
     } finally {
       if (mounted) {
@@ -823,900 +713,193 @@ class _PartnersListState extends State<PartnersList> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Beneficios para Clientes'),
-      centerTitle: true,
-    ),
-    body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : RefreshIndicator(
-            onRefresh: _loadPartners,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: _partners.length,
-              itemBuilder: (context, index) {
-                final partner = _partners[index];
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    leading: partner['logo_url'] != null
-                        ? CircleAvatar(
-                            backgroundImage: NetworkImage(partner['logo_url']),
-                          )
-                        : const CircleAvatar(
-                            child: Icon(Icons.business),
-                          ),
-                    title: Text(
-                      partner['empresa'] ?? 'Sin nombre',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    subtitle: Text(
-                      partner['descuento'] ?? 'Sin descuento especificado',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    trailing: Switch.adaptive(
-                      value: partner['activo'] ?? false,
-                      onChanged: (value) async {
-                        try {
-                          await Supabase.instance.client
-                              .from('partners')
-                              .update({'activo': value})
-                              .eq('id', partner['id']);
-                          
-                          if (mounted) {
-                            _loadPartners();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  value 
-                                    ? 'Beneficio activado' 
-                                    : 'Beneficio desactivado',
-                                ),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: ${e.toString()}'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-    floatingActionButton: FloatingActionButton(
-      backgroundColor: Theme.of(context).primaryColor,
-      onPressed: () {
-        showDialog(
-          context: context,
-          builder: (context) {
-            final companyController = TextEditingController();
-            final discountController = TextEditingController();
-            bool isLoading = false;
-            
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return AlertDialog(
-                  title: const Text('Nuevo Beneficio'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextField(
-                          controller: companyController,
-                          decoration: const InputDecoration(
-                            labelText: 'Empresa*',
-                            border: OutlineInputBorder(),
-                            hintText: 'Ej. Café del Centro',
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: discountController,
-                          decoration: const InputDecoration(
-                            labelText: 'Descuento*',
-                            border: OutlineInputBorder(),
-                            hintText: 'Ej. 20% de descuento',
-                          ),
-                          maxLines: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: isLoading ? null : () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                      ),
-                      onPressed: isLoading ? null : () async {
-                        if (companyController.text.isEmpty || 
-                            discountController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Complete todos los campos obligatorios'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                          return;
-                        }
-
-                        setState(() => isLoading = true);
-                        try {
-                          await Supabase.instance.client.from('partners').insert({
-                            'empresa': companyController.text.trim(),
-                            'descuento': discountController.text.trim(),
-                            'activo': true,
-                            'created_at': DateTime.now().toIso8601String(),
-                          });
-
-                          if (mounted) {
-                            _loadPartners();
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Beneficio creado exitosamente'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: ${e.toString()}'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        } finally {
-                          if (mounted) setState(() => isLoading = false);
-                        }
-                      },
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('Guardar'),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-      },
-      child: const Icon(Icons.add, color: Colors.white),
-    ),
-  );
-}
-}
-
-// Pantalla de Usuario
-class UserHome extends StatefulWidget {
-  final Map<String, dynamic> userData;
-
-  const UserHome({super.key, required this.userData});
-
-  @override
-  _UserHomeState createState() => _UserHomeState();
-}
-
-class _UserHomeState extends State<UserHome> {
-  int _currentIndex = 0;
-  late Map<String, dynamic> _userData;
-
-  @override
-  void initState() {
-    super.initState();
-    _userData = widget.userData;
-  }
-Future<void> _refreshUserData() async {
-    if (!mounted) return;
-    
-    try {
-      final userData = await Supabase.instance.client
-          .from('users')
-          .select()
-          .eq('id', _userData['id'])
-          .single();
-
-      if (mounted && userData != null) {
-        setState(() => _userData = userData);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Datos actualizados correctamente'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        debugPrint('Error refreshing user data: $e');
-      }
-    }
-  }
-
-  Future<void> _redeemReward(String rewardId, int pointsNeeded) async {
-    if (!mounted) return;
-    
-    if (_userData['puntos'] < pointsNeeded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No tienes suficientes puntos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    try {
-      final newPoints = _userData['puntos'] - pointsNeeded;
-      
-      await Supabase.instance.client.from('user_rewards').insert({
-      'user_id': _userData['id'],
-      'reward_id': rewardId,
-    });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Premio canjeado con éxito'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        _refreshUserData();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        debugPrint('Error redeeming reward: $e');
-      }
-    }
-  }
-
-  Widget _buildHomeTab() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Tarjeta de fidelización
-          Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2A5C8F), Color(0xFF1E3A5F)],
-              ),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Mi cuenta',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      _userData['telefono'] ?? '',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Center(
-                  child: Text(
-                    'MEGACARD CLUB',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Tarjeta Digital'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.credit_card, size: 100, color: Colors.blue),
-                              Text(
-                                _userData['telefono'],
-                                style: const TextStyle(fontSize: 24),
-                              ),
-                              Text('${_userData['puntos']} puntos'),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cerrar'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Detalle de tarjeta →',
-                      style: TextStyle(
-                        color: Colors.white,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Sección de puntos acumulados
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 5,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Puntos acumulados',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Bonificados',
-                          style: TextStyle(
-                            color: Colors.grey,
-                          ),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          'Encuesta',
-                          style: TextStyle(
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${_userData['puntos']?.toStringAsFixed(1) ?? '0.0'}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        const Text(
-                          '0.0',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          // Botón de canjear puntos
-          Container(
-            margin: const EdgeInsets.all(20),
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2A5C8F),
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                setState(() => _currentIndex = 1); // Navegar a premios
-              },
-              child: const Text(
-                'CANJEAR PUNTOS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Beneficios para Clientes'),
+        centerTitle: true,
       ),
-    );
-  }
-
-  Widget _buildRewardsTab() {
-    return FutureBuilder(
-      future: Supabase.instance.client
-          .from('rewards')
-          .select()
-          .eq('activo', true),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        
-        if (snapshot.hasError || !snapshot.hasData || (snapshot.data as List).isEmpty) {
-          return const Center(child: Text('No hay premios disponibles'));
-        }
-        
-        final rewards = snapshot.data as List<dynamic>;
-        
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: rewards.length,
-          itemBuilder: (context, index) {
-            final reward = rewards[index] as Map<String, dynamic>;
-            return Card(
-              elevation: 2,
-              margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            reward['nombre'],
-                            style: const TextStyle(
-                              fontSize: 18,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadPartners,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: _partners.length,
+                itemBuilder: (context, index) {
+                  final partner = _partners[index];
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      leading: partner['logo_url'] != null
+                          ? CircleAvatar(
+                              backgroundImage: NetworkImage(partner['logo_url']),
+                            )
+                          : const CircleAvatar(
+                              child: Icon(Icons.business),
+                            ),
+                      title: Text(
+                        partner['empresa'] ?? 'Sin nombre',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            '${reward['puntos_necesarios']} puntos',
-                            style: const TextStyle(
-                              color: Colors.grey,
+                      ),
+                      subtitle: Text(
+                        partner['descuento'] ?? 'Sin descuento especificado',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      trailing: Switch.adaptive(
+                        value: partner['activo'] ?? false,
+                        onChanged: (value) async {
+                          try {
+                            await Supabase.instance.client
+                                .from('partners')
+                                .update({'activo': value})
+                                .eq('id', partner['id']);
+                            
+                            if (mounted) {
+                              _loadPartners();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    value 
+                                      ? 'Beneficio activado' 
+                                      : 'Beneficio desactivado'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Theme.of(context).primaryColor,
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              final companyController = TextEditingController();
+              final discountController = TextEditingController();
+              bool isLoading = false;
+              
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  return AlertDialog(
+                    title: const Text('Nuevo Beneficio'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: companyController,
+                            decoration: const InputDecoration(
+                              labelText: 'Empresa*',
+                              border: OutlineInputBorder(),
+                              hintText: 'Ej. Café del Centro',
                             ),
+                            textCapitalization: TextCapitalization.words,
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: discountController,
+                            decoration: const InputDecoration(
+                              labelText: 'Descuento*',
+                              border: OutlineInputBorder(),
+                              hintText: 'Ej. 20% de descuento',
+                            ),
+                            maxLines: 2,
                           ),
                         ],
                       ),
                     ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2A5C8F),
+                    actions: [
+                      TextButton(
+                        onPressed: isLoading ? null : () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
                       ),
-                      onPressed: () => _redeemReward(
-                        reward['id'],
-                        reward['puntos_necesarios'],
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                        ),
+                        onPressed: isLoading ? null : () async {
+                          if (companyController.text.isEmpty || 
+                              discountController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Complete todos los campos obligatorios'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setState(() => isLoading = true);
+                          try {
+                            await Supabase.instance.client.from('partners').insert({
+                              'empresa': companyController.text.trim(),
+                              'descuento': discountController.text.trim(),
+                              'activo': true,
+                              'created_at': DateTime.now().toIso8601String(),
+                            });
+
+                            if (mounted) {
+                              _loadPartners();
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Beneficio creado exitosamente'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => isLoading = false);
+                          }
+                        },
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Guardar'),
                       ),
-                      child: const Text('Canjear'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-Widget _buildBenefitsTab() {
-  return FutureBuilder(
-    future: Future.wait([
-      // Obtener beneficios activos (partners)
-      Supabase.instance.client
-          .from('partners')
-          .select()
-          .eq('activo', true),
-          
-      // Obtener premios canjeados por el usuario con detalles completos
-      Supabase.instance.client
-          .from('user_rewards')
-          .select('''
-            id, 
-            redemption_date, 
-            used,
-            reward:rewards(id, nombre, descripcion, puntos_necesarios)
-          ''')
-          .eq('user_id', _userData['id'])
-          .order('redemption_date', ascending: false)
-    ]),
-    builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      
-      if (snapshot.hasError) {
-        return const Center(child: Text('Error al cargar datos'));
-      }
-      
-      final benefits = snapshot.data?[0] as List<dynamic>? ?? [];
-      final userRewards = snapshot.data?[1] as List<dynamic>? ?? [];
-      
-      return Column(
-        children: [
-          // Tarjeta de identificación (igual que antes)
-          Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2A5C8F), Color(0xFF1E3A5F)],
-              ),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Beneficios',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Tarjeta',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      _userData['telefono'] ?? '',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Tabs de navegación
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(
-                      foregroundColor: _currentIndex == 2 ? const Color(0xFF2A5C8F) : Colors.grey,
-                    ),
-                    child: const Text('Beneficios'),
-                  ),
-                ),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => setState(() => _currentIndex = 1),
-                    style: TextButton.styleFrom(
-                      foregroundColor: _currentIndex == 1 ? const Color(0xFF2A5C8F) : Colors.grey,
-                    ),
-                    child: const Text('Premios'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Listado de beneficios
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: benefits.length,
-              itemBuilder: (context, index) {
-                final benefit = benefits[index] as Map<String, dynamic>;
-                return _buildBenefitCard(benefit);
-              },
-            ),
-          ),
-
-          // Sección "Mis premios obtenidos"
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Mis premios obtenidos',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                
-                if (userRewards.isEmpty)
-                  const Text(
-                    'No has canjeado ningún premio aún',
-                    style: TextStyle(color: Colors.grey),
-                  )
-                else
-                  ...userRewards.map((reward) => _buildUserRewardCard(reward)).toList(),
-              ],
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
-Widget _buildBenefitCard(Map<String, dynamic> benefit) {
-  return Card(
-    elevation: 2,
-    margin: const EdgeInsets.only(bottom: 16),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.blue[100],
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: const Icon(Icons.discount, color: Colors.blue),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  benefit['empresa'],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  benefit['descuento'] ?? 'Beneficio especial',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-Widget _buildUserRewardCard(Map<String, dynamic> reward) {
-  final rewardData = reward['reward'] as Map<String, dynamic>;
-  final redemptionDate = DateTime.parse(reward['redemption_date']);
-  final formattedDate = DateFormat('dd/MM/yyyy').format(redemptionDate);
-  final isUsed = reward['used'] as bool;
-
-  return Card(
-    elevation: 2,
-    margin: const EdgeInsets.only(bottom: 8),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: ListTile(
-      leading: Icon(
-        isUsed ? Icons.check_circle : Icons.card_giftcard,
-        color: isUsed ? Colors.green : Colors.amber,
-      ),
-      title: Text(rewardData['nombre'] ?? 'Premio'),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Canjeado el $formattedDate'),
-          if (isUsed) 
-            const Text(
-              'Ya utilizado',
-              style: TextStyle(color: Colors.green),
-            ),
-        ],
-      ),
-      trailing: IconButton(
-        icon: const Icon(Icons.info_outline),
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(rewardData['nombre'] ?? 'Detalles del premio'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Canjeado el $formattedDate'),
-                  const SizedBox(height: 10),
-                  Text('Puntos utilizados: ${rewardData['puntos_necesarios']}'),
-                  const SizedBox(height: 10),
-                  Text(rewardData['descripcion'] ?? 'Descripción no disponible'),
-                ],
-              ),
-              actions: [
-                if (!isUsed) TextButton(
-                  onPressed: () => _markRewardAsUsed(reward['id']),
-                  child: const Text('Marcar como usado'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cerrar'),
-                ),
-              ],
-            ),
+                    ],
+                  );
+                },
+              );
+            },
           );
         },
-      ),
-    ),
-  );
-}
-Future<void> _markRewardAsUsed(String rewardId) async {
-  try {
-    await Supabase.instance.client
-        .from('user_rewards')
-        .update({'used': true})
-        .eq('id', rewardId);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Premio marcado como usado'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      setState(() {}); // Refrescar la UI
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi Fidelización'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: _currentIndex == 0
-          ? _buildHomeTab()
-          : _currentIndex == 1
-              ? _buildRewardsTab()
-              : _buildBenefitsTab(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Premios'),
-          BottomNavigationBarItem(icon: Icon(Icons.discount), label: 'Beneficios'),
-        ],
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
