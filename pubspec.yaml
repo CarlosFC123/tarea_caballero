@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.0.0
- 
+  http: ^0.13.5
   shared_preferences: ^2.2.2
   intl: ^0.18.1
 
