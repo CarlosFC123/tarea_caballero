@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/auth/login_screen.dart';
-
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -9,7 +9,7 @@ void main() async {
     url: 'https://kngtqjpdmzbvwuevxarx.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuZ3RxanBkbXpidnd1ZXZ4YXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk3NzEwNjgsImV4cCI6MjA2NTM0NzA2OH0.PgP2uS6kOs4Zlk-e3Q80TsDEQRhP6WCUaXRQv6k9wWk',
   );
-  
+  setUrlStrategy(PathUrlStrategy());
   runApp(const FidelizacionApp());
 }
 

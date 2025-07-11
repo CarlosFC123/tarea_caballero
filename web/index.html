@@ -1,5 +1,11 @@
 <!DOCTYPE html>
 <html>
+  <script src="https://cdn.jsdelivr.net/npm/speech-recognition-polyfill/dist/speech-recognition-polyfill.min.js"></script>
+<script>
+  // Configuración global para la API de voz
+  window.speechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+</script>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -34,5 +40,21 @@
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
+  <script src="speech_recognition.js"></script>
+   <script>
+    window.addEventListener('load', function(ev) {
+      // Download main.dart.js
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>
